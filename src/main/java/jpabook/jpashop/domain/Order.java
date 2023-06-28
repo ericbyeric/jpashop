@@ -1,5 +1,9 @@
 package jpabook.jpashop.domain;
 
+import lombok.AccessLevel;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
 import org.aspectj.weaver.ast.Or;
 
 import javax.persistence.*;
@@ -11,6 +15,8 @@ import static javax.persistence.FetchType.*;
 
 @Entity
 @Table(name="orders")
+@Getter @Setter
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class Order {
 
     @Id
@@ -57,6 +63,61 @@ public class Order {
 
     public void setDelivery(Delivery delivery){
         this.delivery = delivery;
-        delivery.getOrder(this);
+        delivery.setOrder(this);
     }
+
+
+    //==생성 메서드==//
+
+    /**
+     * 주문 생성
+     */
+    public static Order createOrder(Member member, Delivery delivery, OrderItem... orderItems){  // 생성 메서드에서 주문 생성에 대한 비지니스 로직은 완결 시킨다.
+        Order order = new Order();
+        order.setMember(member);
+        order.setDelivery(delivery);
+        for(OrderItem orderItem : orderItems){
+            order.addOrderItem(orderItem);
+        }
+        order.setStatus(OrderStatus.ORDER);
+        order.setOrderDate(LocalDateTime.now());
+        return order;
+    }
+
+    //==비지니스 로직==//
+    /**
+     * 주문 취소
+     */
+    public void cancel(){
+        if (delivery.getStatus() == DeliveryStatus.COMP) {
+            throw new IllegalStateException("이미 배송완료가 된 상품은 취소가 불가능합니다.");
+        }
+        this.setStatus(OrderStatus.CANCEL);
+        orderItems.forEach(orderItem -> orderItem.cancel());    // 재고 수량을 원복 하기 위해서
+    }
+
+
+    //==조회 로직==//  계산이 필요할 때가 있다
+
+    /**
+     * 전체 주문 가격 조회
+     */
+    public int getTotalPrice(){
+//        int totalPrice = orderItems.stream().mapToInt(OrderItem::getOrderPrice).sum();
+//        for(OrderItem orderItem : orderItems){
+//            totalPrice += orderItem.getOrderPrice();
+//        }
+        // 이건 람다로 표현해본건데 지역변수를 사용할 수 없어서 못씀
+//        orderItems.forEach(orderItem -> totalPrice += orderItem.getOrderPrice());
+//        return totalPrice;
+
+        int totalPrice = 0;
+        for (OrderItem orderItem : orderItems) {
+            totalPrice += orderItem.getTotalPrice();
+        }
+        return totalPrice;
+    }
+
+
+
 }
